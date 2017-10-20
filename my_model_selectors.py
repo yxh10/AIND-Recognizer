@@ -105,5 +105,18 @@ class SelectorCV(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+        try:
+            current_min_score = 'inf'
+
+            for x in range(self.min_n_components, self.max_n_components):
+                hmm_model = GaussianHMM(n_components=self.n_constant, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+
+                split_method = KFold()
+
+
+        except:
+
+
         # TODO implement model selection using CV
         raise NotImplementedError
