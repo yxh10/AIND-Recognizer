@@ -132,7 +132,20 @@ class SelectorDIC(ModelSelector):
 
                 logL = hmm_model.score(self.X, self.lengths)
                 num_data_points = len(self.sequences)
-                current_dic_score = -2 * logL + current_num_states * np.log(num_data_points)
+
+                all_logL_except_current = []
+                for key, value in self.sequences:
+                    if key != self.this_word:
+                        current_other_squence, current_other_lengths = self.all_word_Xlengths[key]
+                        except_hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(current_other_squence, current_other_lengths)
+
+                        current_other_logL = except_hmm_model.score(current_other_squence, current_other_lengths)
+                        all_logL_except_current.append(current_other_logL)
+
+                sum_other_logL = np.sum(all_logL_except_current)
+
+                current_dic_score = logL - (1 / len(self.words)) * sum_other_logL
 
                 if current_dic_score < min_dic_score:
                     min_dic_score = current_dic_score
