@@ -76,8 +76,35 @@ class SelectorBIC(ModelSelector):
         """
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        num_states = 0
+        min_bic_score = float("inf")
+        best_num_components = 0
+
+        try:
+            for current_num_states in range(self.min_n_components, self.max_n_components):
+                num_states = current_num_states
+                hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+
+                logL = hmm_model.score(self.X, self.lengths)
+                num_data_points = len(self.sequences)
+                current_bic_score = -2 * logL + current_num_states * np.log(num_data_points)
+
+                if current_bic_score < min_bic_score:
+                    min_bic_score = current_bic_score
+                    best_num_components = current_num_states
+
+                if self.verbose:
+                    print("model created for {} with {} states".format(self.this_word, current_num_states))
+
+            return self.base_model(best_num_components)
+        except:
+            if self.verbose:
+                print("failure on {} with {} states".format(self.this_word, num_states))
+
+            return self.base_model(num_states)
+
+
 
 
 class SelectorDIC(ModelSelector):
@@ -93,8 +120,33 @@ class SelectorDIC(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        num_states = 0
+        min_dic_score = float("inf")
+        best_num_components = 0
+
+        try:
+            for current_num_states in range(self.min_n_components, self.max_n_components):
+                num_states = current_num_states
+                hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+
+                logL = hmm_model.score(self.X, self.lengths)
+                num_data_points = len(self.sequences)
+                current_dic_score = -2 * logL + current_num_states * np.log(num_data_points)
+
+                if current_dic_score < min_dic_score:
+                    min_dic_score = current_dic_score
+                    best_num_components = current_num_states
+
+                if self.verbose:
+                    print("model created for {} with {} states".format(self.this_word, current_num_states))
+
+            return self.base_model(best_num_components)
+        except:
+            if self.verbose:
+                print("failure on {} with {} states".format(self.this_word, num_states))
+
+            return self.base_model(num_states)
 
 
 class SelectorCV(ModelSelector):
@@ -105,18 +157,51 @@ class SelectorCV(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+        num_states = 0
+        min_avg_logL = float("inf")
+        best_num_components = 0
+
+        if len(self.sequences) < 3:
+            split_method = KFold(len(self.sequences))
+        else:
+            split_method = KFold()
+
         try:
-            current_min_score = 'inf'
+            for current_num_states in range(self.min_n_components, self.max_n_components):
+                num_states = current_num_states
+                current_num_state_scores = []
 
-            for x in range(self.min_n_components, self.max_n_components):
-                hmm_model = GaussianHMM(n_components=self.n_constant, covariance_type="diag", n_iter=1000,
-                                        random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                    training_squences_x, training_squences_lengths = combine_sequences(cv_train_idx, self.sequences)
 
-                split_method = KFold()
+                    test_squences_x, test_squences_lengths = combine_sequences(cv_test_idx, self.sequences)
 
+                    hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(training_squences_x, training_squences_lengths)
 
+                    logL = hmm_model.score(test_squences_x, test_squences_lengths)
+
+                    current_num_state_scores.append(logL)
+
+                current_avg_logL = np.mean(current_num_state_scores)
+
+                if current_avg_logL < min_avg_logL:
+                    min_avg_logL = current_avg_logL
+                    best_num_components = current_num_states
+
+                if self.verbose:
+                    print("model created for {} with {} states".format(self.this_word, current_num_states))
+
+            return self.base_model(num_states)
         except:
+            if self.verbose:
+                print("failure on {} with {} states".format(self.this_word, num_states))
 
+            return self.base_model(num_states)
+            # return self.base_model(best_num_components)
 
-        # TODO implement model selection using CV
-        raise NotImplementedError
+        # except:
+        #     if self.verbose:
+        #         print("failure on {} with {} states".format(self.this_word, num_states))
+        #     return None
+
