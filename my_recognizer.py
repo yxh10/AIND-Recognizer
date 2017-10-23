@@ -20,6 +20,26 @@ def recognize(models: dict, test_set: SinglesData):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     probabilities = []
     guesses = []
-    # TODO implement the recognizer
-    # return probabilities, guesses
-    raise NotImplementedError
+
+    for idx in range(0, test_set.num_items):
+        current_frame_dict = {}
+        highest_key = ''
+        highest_value = float('-inf')
+
+        for model_key, model_value in models.items():
+            try:
+                current_sequences, current_lengths = test_set.get_item_Xlengths(idx)
+                current_logL = model_value.score(current_sequences, current_lengths)
+                current_frame_dict[model_key] = current_logL
+
+                if current_logL > highest_value:
+                    highest_value = current_logL
+                    highest_key = model_key
+
+            except:
+                continue
+
+        probabilities.append(current_frame_dict)
+        guesses.append(highest_key)
+
+    return probabilities, guesses
