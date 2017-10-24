@@ -174,12 +174,17 @@ class SelectorCV(ModelSelector):
         min_avg_logL = float("inf")
         best_num_components = 0
 
-        if len(self.sequences) < 3:
-            split_method = KFold(len(self.sequences))
-        else:
-            split_method = KFold()
+        # if len(self.sequences) < 3:
+        #     split_method = KFold(len(self.sequences))
+        # else:
+        #     split_method = KFold()
 
         try:
+            if len(self.sequences) < 3:
+                split_method = KFold(len(self.sequences))
+            else:
+                split_method = KFold()
+
             for current_num_states in range(self.min_n_components, self.max_n_components):
                 num_states = current_num_states
                 current_num_state_scores = []
@@ -205,7 +210,7 @@ class SelectorCV(ModelSelector):
                 if self.verbose:
                     print("model created for {} with {} states".format(self.this_word, current_num_states))
 
-            return self.base_model(num_states)
+            return self.base_model(best_num_components)
         except:
             if self.verbose:
                 print("failure on {} with {} states".format(self.this_word, num_states))
