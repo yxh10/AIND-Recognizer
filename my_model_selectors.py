@@ -1,6 +1,7 @@
 import math
 import statistics
 import warnings
+import sys
 
 import numpy as np
 from hmmlearn.hmm import GaussianHMM
@@ -124,20 +125,31 @@ class SelectorDIC(ModelSelector):
         min_dic_score = float("inf")
         best_num_components = 0
 
+        current_training_word = ''
+        current_competing_word = ''
+
         try:
             for current_num_states in range(self.min_n_components, self.max_n_components):
+                current_training_word = self.this_word
                 num_states = current_num_states
                 hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
                                         random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
 
                 logL = hmm_model.score(self.X, self.lengths)
-                num_data_points = len(self.sequences)
 
                 all_logL_except_current = []
-                for key, value in self.sequences:
+                for key, value in self.words.items():
                     if key != self.this_word:
-                        current_other_squence, current_other_lengths = self.all_word_Xlengths[key]
-                        except_hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
+                        current_competing_word = key
+                        current_other_squence, current_other_lengths = self.hwords[key]
+                        num_squence = len(current_other_squence)
+
+                        if current_num_states > num_squence:
+                            actual_num_state = num_squence
+                        else:
+                            actual_num_state = current_num_states
+
+                        except_hmm_model = GaussianHMM(actual_num_state, covariance_type="diag", n_iter=1000,
                                         random_state=self.random_state, verbose=False).fit(current_other_squence, current_other_lengths)
 
                         current_other_logL = except_hmm_model.score(current_other_squence, current_other_lengths)
@@ -156,6 +168,8 @@ class SelectorDIC(ModelSelector):
 
             return self.base_model(best_num_components)
         except:
+            # print("Unexpected error:", sys.exc_info()[0])
+            # print("The training word is {}, and competing word is {}".format(current_training_word, current_competing_word))
             if self.verbose:
                 print("failure on {} with {} states".format(self.this_word, num_states))
 
