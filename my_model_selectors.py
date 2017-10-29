@@ -133,7 +133,7 @@ class SelectorDIC(ModelSelector):
         current_competing_word = ''
 
         try:
-            for current_num_states in range(self.min_n_components, self.max_n_components):
+            for current_num_states in range(self.min_n_components, self.max_n_components + 1):
                 current_training_word = self.this_word
                 num_states = current_num_states
                 hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
@@ -144,24 +144,14 @@ class SelectorDIC(ModelSelector):
                 all_logL_except_current = []
                 for key, value in self.words.items():
                     if key != self.this_word:
-                        current_competing_word = key
                         current_other_squence, current_other_lengths = self.hwords[key]
-                        num_squence = len(current_other_squence)
 
-                        if current_num_states > num_squence:
-                            actual_num_state = num_squence
-                        else:
-                            actual_num_state = current_num_states
-
-                        except_hmm_model = GaussianHMM(actual_num_state, covariance_type="diag", n_iter=1000,
-                                        random_state=self.random_state, verbose=False).fit(current_other_squence, current_other_lengths)
-
-                        current_other_logL = except_hmm_model.score(current_other_squence, current_other_lengths)
+                        current_other_logL = hmm_model.score(current_other_squence, current_other_lengths)
                         all_logL_except_current.append(current_other_logL)
 
-                sum_other_logL = np.sum(all_logL_except_current)
+                other_penalty = np.mean(all_logL_except_current)
 
-                current_dic_score = logL - (1 / len(self.words)) * sum_other_logL
+                current_dic_score = logL - other_penalty
 
                 if current_dic_score > max_dic_score:
                     max_dic_score = current_dic_score
@@ -189,7 +179,7 @@ class SelectorCV(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         num_states = 0
-        min_avg_logL = float("inf")
+        max_avg_logL = float("-inf")
         best_num_components = 0
 
         # if len(self.sequences) < 3:
@@ -203,7 +193,7 @@ class SelectorCV(ModelSelector):
             else:
                 split_method = KFold()
 
-            for current_num_states in range(self.min_n_components, self.max_n_components):
+            for current_num_states in range(self.min_n_components, self.max_n_components + 1):
                 num_states = current_num_states
                 current_num_state_scores = []
 
@@ -221,8 +211,8 @@ class SelectorCV(ModelSelector):
 
                 current_avg_logL = np.mean(current_num_state_scores)
 
-                if current_avg_logL < min_avg_logL:
-                    min_avg_logL = current_avg_logL
+                if current_avg_logL > max_avg_logL:
+                    max_avg_logL = current_avg_logL
                     best_num_components = current_num_states
 
                 if self.verbose:
