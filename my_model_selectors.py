@@ -82,14 +82,18 @@ class SelectorBIC(ModelSelector):
         best_num_components = 0
 
         try:
-            for current_num_states in range(self.min_n_components, self.max_n_components):
+            for current_num_states in range(self.min_n_components, self.max_n_components + 1):
                 num_states = current_num_states
-                hmm_model = GaussianHMM(current_num_states, covariance_type="diag", n_iter=1000,
-                                        random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                hmm_model = self.base_model(current_num_states)
 
                 logL = hmm_model.score(self.X, self.lengths)
-                num_data_points = len(self.sequences)
-                current_bic_score = -2 * logL + current_num_states * np.log(num_data_points)
+
+                num_features = len(self.X[0])
+
+                p = np.power(num_states, 2) + 2 * num_states * num_features - 1
+
+                num_data_points = len(self.X)
+                current_bic_score = -2 * logL + p * np.log(num_data_points)
 
                 if current_bic_score < min_bic_score:
                     min_bic_score = current_bic_score
@@ -122,7 +126,7 @@ class SelectorDIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         num_states = 0
-        min_dic_score = float("inf")
+        max_dic_score = float("-inf")
         best_num_components = 0
 
         current_training_word = ''
@@ -159,8 +163,8 @@ class SelectorDIC(ModelSelector):
 
                 current_dic_score = logL - (1 / len(self.words)) * sum_other_logL
 
-                if current_dic_score < min_dic_score:
-                    min_dic_score = current_dic_score
+                if current_dic_score > max_dic_score:
+                    max_dic_score = current_dic_score
                     best_num_components = current_num_states
 
                 if self.verbose:
